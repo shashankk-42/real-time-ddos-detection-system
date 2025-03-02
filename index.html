@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website 2 - DDoS Simulation</title>
+    <style>
+        /* Modern White Theme */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            color: #333;
+            text-align: center;
+        }
+
+        header {
+            background: #ffffff;
+            color: #006aff;
+            padding: 1rem 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        main {
+            padding: 2rem;
+        }
+
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        canvas {
+            max-width: 80%;
+            margin: 2rem auto;
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e0e0e0;
+        }
+
+        #alert {
+            display: none;
+            color: #fff;
+            background: #f44336;
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            border-radius: 7px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            animation: pulse-red 1s infinite alternate;
+        }
+
+        @keyframes pulse-red {
+            0% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+
+        footer {
+            background-color: #ffffff;
+            color: #777;
+            padding: 0.7rem 0;
+            font-size: 0.85rem;
+            font-weight: bold;
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.1);
+            border-top: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Target Website</h1>
+        <p>Simulated target website for DDoS detection</p>
+    </header>
+
+    <main>
+        <h2>About this Website</h2>
+        <p>This is a sample website to generate network traffic logs for DDoS detection purposes.</p>
+    </main>
+
+    <footer>
+        <p>ASEP Group 2, Real time DDos Attack Detection</p>
+    </footer>
+
+    <script>
+        async function sendLog() {
+            try {
+                const response = await fetch("https://api.ipify.org?format=json");
+                const data = await response.json();
+                const ip = data.ip;
+
+                await fetch("https://localhost:5000/log", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        ip: ip,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                console.log(`✅ Logged IP: ${ip}`);
+            } catch (error) {
+                console.error("❌ Logging failed:", error);
+            }
+        }
+
+        window.onload = sendLog;
+
+        // ✅ Secure WebSocket Connection to localhost
+        const ws = new WebSocket("wss://localhost:5001");
+
+        ws.onopen = () => {
+            console.log("✅ WebSocket connected!");
+        };
+
+        ws.onmessage = (event) => {
+            console.log("📥 WebSocket message:", event.data);
+            document.getElementById("alert").style.display = "block"; // Show alert if DDoS detected
+            setTimeout(() => document.getElementById("alert").style.display = "none", 5000);
+        };
+
+        ws.onerror = (error) => {
+            console.error("❌ WebSocket Error:", error);
+        };
+
+        async function sendLog() {
+            try {
+                const response = await fetch("https://api.ipify.org?format=json");
+                const data = await response.json();
+                const ip = data.ip;
+                const timestamp = new Date().toISOString();
+
+                await fetch("https://localhost:5000/log", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ip, timestamp })
+                });
+
+                console.log("✅ Log sent:", ip, timestamp);
+            } catch (err) {
+                console.error("❌ Error sending log:", err);
+            }
+        }
+    </script>
+</body>
+</html>

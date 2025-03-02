@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time RPS Monitoring</title>
+    <link rel="stylesheet" href="showcase-styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        canvas {
+            width: 80% !important;
+            height: 400px !important;
+            display: block;
+            margin: auto;
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        #controls {
+            text-align: center;
+            margin: 20px;
+        }
+        #slider {
+            width: 80%;
+        }
+        #goLive {
+            display: block;
+            margin: 10px auto;
+            padding: 10px 15px;
+            background: #0078D7;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #goLive:hover {
+            background: #005bb5;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Real-Time RPS Monitoring</h1>
+    </header>
+
+    <div id="alert" style="display: none;">🚨 DDoS Attack Detected! 🚨</div>
+    <audio id="beep" src="beep.mp3"></audio>
+
+    <canvas id="rpsChart"></canvas>
+
+    <div id="controls">
+        <input type="range" id="slider" min="0" max="100" value="100" step="1">
+        <p>Adjust slider to view past data (5s window)</p>
+        <button id="goLive">Go Live</button>
+    </div>
+
+    <script>
+        const ctx = document.getElementById("rpsChart").getContext("2d");
+        const alertBox = document.getElementById("alert");
+        const beepSound = document.getElementById("beep");
+        const slider = document.getElementById("slider");
+        const goLiveButton = document.getElementById("goLive");
+
+        const MAX_POINTS = 500;
+        const DISPLAY_TIME = 5000; // Show only a 5-second window
+        let realTimeEnabled = true;
+
+        // ✅ Load stored data from localStorage (PERSIST DATA ACROSS RELOADS)
+        let fullLabels = JSON.parse(localStorage.getItem("fullLabels")) || [];
+        let fullData = JSON.parse(localStorage.getItem("fullData")) || [];
+
+        console.log("📌 Initializing Chart...");
+
+        function getWindowData(startIndex) {
+            return {
+                labels: fullLabels.slice(startIndex, startIndex + 50), // Show only ~5 seconds at a time
+                data: fullData.slice(startIndex, startIndex + 50),
+            };
+        }
+
+        function getLast5SecondsData() {
+            const now = new Date().getTime();
+            let startIndex = fullLabels.findIndex(time => new Date(time).getTime() >= now - DISPLAY_TIME);
+
+            if (startIndex === -1) startIndex = 0; // If no valid index found, show from start
+            return getWindowData(startIndex);
+        }
+
+        const initialData = getLast5SecondsData();
+
+        const chartData = {
+            labels: initialData.labels,
+            datasets: [{
+                label: "Requests Per Second (RPS)",
+                data: initialData.data,
+                borderColor: "red",
+                backgroundColor: "rgba(255, 0, 0, 0.3)",
+                borderWidth: 2,
+                pointRadius: 3,
+                pointBackgroundColor: "red",
+                tension: 0.3,
+            }]
+        };
+
+        const rpsChart = new Chart(ctx, {
+            type: "line",
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: {
+                    x: {
+                        type: "time",
+                        time: {
+                            tooltipFormat: "HH:mm:ss",
+                            displayFormats: { second: "HH:mm:ss" }
+                        },
+                        title: { display: true, text: "Timestamp" },
+                        ticks: { autoSkip: true, maxTicksLimit: 10 }
+                    },
+                    y: {
+                        title: { display: true, text: "RPS" },
+                        min: 0,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+
+        console.log("✅ Chart initialized!");
+
+        const ws = new WebSocket("ws://localhost:5002");
+
+        ws.onopen = () => console.log("✅ WebSocket Connected!");
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("📥 Data received:", data);
+
+            fullLabels.push(data.timestamp);
+            fullData.push(data.rps);
+
+            if (fullLabels.length > MAX_POINTS) {
+                fullLabels.shift();
+                fullData.shift();
+            }
+
+            // ✅ Store data persistently
+            localStorage.setItem("fullLabels", JSON.stringify(fullLabels));
+            localStorage.setItem("fullData", JSON.stringify(fullData));
+
+            if (realTimeEnabled) {
+                updateGraph(getLast5SecondsData().labels, getLast5SecondsData().data);
+            }
+
+            if (data.rps > 5) {
+                alertBox.style.display = "block";
+                beepSound.play();
+                setTimeout(() => alertBox.style.display = "none", 5000);
+            }
+        };
+
+        ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
+
+        setInterval(() => {
+            if (!realTimeEnabled) return;
+
+            const now = new Date().toISOString();
+
+            if (!fullLabels.includes(now)) {
+                fullLabels.push(now);
+                fullData.push(fullData[fullData.length - 1] || 1);
+            }
+
+            if (fullLabels.length > MAX_POINTS) {
+                fullLabels.shift();
+                fullData.shift();
+            }
+
+            updateGraph(getLast5SecondsData().labels, getLast5SecondsData().data);
+
+            // ✅ Store updated data persistently
+            localStorage.setItem("fullLabels", JSON.stringify(fullLabels));
+            localStorage.setItem("fullData", JSON.stringify(fullData));
+        }, 1000);
+
+        // ✅ Slider Fix: Now shows only a 5-second window while scrolling
+        slider.addEventListener("input", function () {
+            const value = parseInt(this.value);
+            const slicePoint = Math.floor((value / 100) * fullLabels.length);
+
+            if (slicePoint < fullLabels.length - 1) {
+                realTimeEnabled = false;
+                updateGraph(getWindowData(slicePoint).labels, getWindowData(slicePoint).data);
+            } else {
+                realTimeEnabled = true;
+                updateGraph(getLast5SecondsData().labels, getLast5SecondsData().data);
+            }
+        });
+
+        // ✅ "Go Live" Button - Correctly resumes real-time updates
+        goLiveButton.addEventListener("click", function () {
+            realTimeEnabled = true;
+            slider.value = 100;
+            updateGraph(getLast5SecondsData().labels, getLast5SecondsData().data);
+        });
+
+        function updateGraph(labels, data) {
+            rpsChart.data.labels = labels;
+            rpsChart.data.datasets[0].data = data;
+            rpsChart.update();
+        }
+    </script>
+</body>
+</html>

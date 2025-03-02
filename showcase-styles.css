@@ -1,0 +1,61 @@
+/* Modern White Theme */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f9f9f9;
+    color: #333;
+    text-align: center;
+}
+
+header {
+    background: #ffffff;
+    color: #006aff;
+    padding: 1rem 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+canvas {
+    max-width: 80%;
+    margin: 2rem auto;
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e0e0e0;
+}
+
+#alert {
+    display: none;
+    color: #fff;
+    background: #f44336;
+    padding: 12px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 15px;
+    border-radius: 7px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    animation: pulse-red 1s infinite alternate;
+}
+
+@keyframes pulse-red {
+    0% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+footer {
+    background-color: #ffffff;
+    color: #777;
+    padding: 0.7rem 0;
+    font-size: 0.85rem;
+    font-weight: bold;
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.1);
+    border-top: 1px solid #e0e0e0;
+}
